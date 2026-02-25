@@ -1,7 +1,8 @@
 import { createServerFn } from '@tanstack/react-start'
 
-export const getStravaAuthUrl = createServerFn({ method: 'GET' }).handler(
-  async () => {
+export const getStravaAuthUrl = createServerFn({ method: 'POST' }).handler(
+  // @ts-expect-error ServerFn types are too complex without a validation library
+  async ({ data: type }: { data: 'source' | 'target' }) => {
     const clientId = process.env.STRAVA_CLIENT_ID
 
     if (!clientId) {
@@ -19,13 +20,21 @@ export const getStravaAuthUrl = createServerFn({ method: 'GET' }).handler(
     authUrl.searchParams.append('response_type', 'code')
     authUrl.searchParams.append('redirect_uri', redirectUri)
     authUrl.searchParams.append('approval_prompt', 'force')
-    authUrl.searchParams.append('scope', 'activity:write')
+    
+    if (type === 'source') {
+      authUrl.searchParams.append('scope', 'activity:read_all')
+    } else {
+      authUrl.searchParams.append('scope', 'activity:write')
+    }
+    
+    authUrl.searchParams.append('state', type)
 
     return authUrl.toString()
   },
 )
 
 export const exchangeCodeForToken = createServerFn({ method: 'POST' }).handler(
+  // @ts-expect-error ServerFn types are too complex without a validation library
   async ({ data: code }: { data: string }) => {
     const clientId = process.env.STRAVA_CLIENT_ID
     const clientSecret = process.env.STRAVA_CLIENT_SECRET

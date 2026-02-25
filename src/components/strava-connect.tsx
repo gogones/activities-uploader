@@ -9,7 +9,6 @@ import {
   Card,
   CardContent,
   CardDescription,
-  CardFooter,
   CardHeader,
   CardTitle,
 } from '@/components/ui/card'
@@ -17,11 +16,12 @@ import { getStravaAuthUrl } from '@/lib/auth'
 import { cn } from '@/lib/utils'
 
 interface StravaConnectProps {
+  type: 'source' | 'target'
   isLoading?: boolean
   error?: string | null
 }
 
-export function StravaConnect({ isLoading, error }: StravaConnectProps) {
+export function StravaConnect({ type, isLoading, error }: StravaConnectProps) {
   const [authUrl, setAuthUrl] = React.useState<string | null>(null)
   const [isFetchingUrl, setIsFetchingUrl] = React.useState(false)
 
@@ -29,7 +29,7 @@ export function StravaConnect({ isLoading, error }: StravaConnectProps) {
     async function fetchUrl() {
       setIsFetchingUrl(true)
       try {
-        const url = await getStravaAuthUrl()
+        const url = await getStravaAuthUrl({ data: type })
         setAuthUrl(url)
       } catch (e) {
         console.error('Failed to fetch Strava auth URL', e)
@@ -50,11 +50,12 @@ export function StravaConnect({ isLoading, error }: StravaConnectProps) {
           <IconBrandStrava className="w-12 h-12 text-[#FC4C02]" />
         </div>
         <CardTitle className="text-3xl font-bold tracking-tight">
-          Connect with Strava
+          {type === 'source' ? 'Connect Source Account' : 'Connect Target Account'}
         </CardTitle>
         <CardDescription className="text-base mt-2">
-          Authorize this app to upload GPX files directly to your Strava
-          activities.
+          {type === 'source' 
+            ? 'Authorize to read and export your activities.' 
+            : 'Authorize to upload activities directly to this account.'}
         </CardDescription>
       </CardHeader>
       <CardContent className="flex flex-col items-center pb-8 space-y-6">
@@ -78,7 +79,9 @@ export function StravaConnect({ isLoading, error }: StravaConnectProps) {
             )}
           >
             {authUrl && !isLoading ? (
-              <a href={authUrl}>Connect to Strava</a>
+              <a href={authUrl}>
+                {type === 'source' ? 'Connect Source (Export)' : 'Connect Target (Upload)'}
+              </a>
             ) : (
               <span>
                 <IconLoader2 className="mr-2 h-5 w-5 animate-spin inline-block" />
