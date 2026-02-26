@@ -62,12 +62,22 @@ export const uploadToStrava = createServerFn({ method: 'POST' }).handler(
 
 export const getActivities = createServerFn({ method: 'POST' }).handler(
   // @ts-expect-error Types missing
-  async ({ data: { accessToken, page = 1, perPage = 30 } }: { data: { accessToken: string; page?: number; perPage?: number } }) => {
+  async ({ data: { accessToken, page = 1, perPage = 30, after, before } }: { data: { accessToken: string; page?: number; perPage?: number; after?: number; before?: number } }) => {
     if (!accessToken) throw new Error('No access token provided')
 
     try {
+      const url = new URL('https://www.strava.com/api/v3/athlete/activities')
+      url.searchParams.append('page', String(page))
+      url.searchParams.append('per_page', String(perPage))
+      if (after !== undefined) {
+        url.searchParams.append('after', String(after))
+      }
+      if (before !== undefined) {
+        url.searchParams.append('before', String(before))
+      }
+
       const response = await fetch(
-        `https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`,
+        url.toString(),
         {
           headers: { Authorization: `Bearer ${accessToken}` },
         }

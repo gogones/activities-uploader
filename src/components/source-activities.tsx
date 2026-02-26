@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { IconCloudDownload, IconCheck, IconAlertCircle, IconLoader2, IconRun, IconBike } from '@tabler/icons-react'
 import { Badge } from '@/components/ui/badge'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 
 interface SourceActivitiesProps {
   sourceToken: string
@@ -18,21 +19,42 @@ export function SourceActivities({ sourceToken, targetToken, sourceName, targetN
   const [error, setError] = useState<string | null>(null)
   const [exportingId, setExportingId] = useState<number | null>(null)
   const [exportResults, setExportResults] = useState<Record<number, { success: boolean; error?: string }>>({})
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString())
 
   useEffect(() => {
     loadActivities()
-  }, [sourceToken])
+  }, [sourceToken, selectedYear])
 
   const loadActivities = async () => {
     setIsLoading(true)
     setError(null)
     try {
-      const data = await (getActivities as any)({ data: { accessToken: sourceToken, perPage: 10 } })
-      if (Array.isArray(data)) {
-        setActivities(data)
-      } else {
-        throw new Error('Invalid response from Strava')
+      const year = parseInt(selectedYear, 10)
+      const startOfYear = new Date(year, 0, 1).getTime() / 1000
+      const endOfYear = new Date(year, 11, 31, 23, 59, 59).getTime() / 1000
+      
+      let allActivities: any[] = []
+      let page = 1
+      let hasMore = true
+      
+      while (hasMore) {
+        const data = await (getActivities as any)({ 
+          data: { accessToken: sourceToken, perPage: 200, page, after: startOfYear, before: endOfYear } 
+        })
+        
+        if (Array.isArray(data)) {
+          allActivities = [...allActivities, ...data]
+          if (data.length < 200) {
+            hasMore = false
+          } else {
+            page++
+          }
+        } else {
+          throw new Error('Invalid response from Strava')
+        }
       }
+      
+      setActivities(allActivities)
     } catch (err: any) {
       console.error('Failed to load activities', err)
       setError(err.message || 'Failed to load activities from Source account')
@@ -77,13 +99,27 @@ export function SourceActivities({ sourceToken, targetToken, sourceName, targetN
           <div>
             <CardTitle>Source Activities</CardTitle>
             <CardDescription>
-              Recent activities from {sourceName ? <span className="font-medium text-foreground">{sourceName}'s</span> : 'your Source'} account available for export to {targetName ? <span className="font-medium text-foreground">{targetName}</span> : 'Target'}.
+              Activities from {sourceName ? <span className="font-medium text-foreground">{sourceName}'s</span> : 'your Source'} account available for export to {targetName ? <span className="font-medium text-foreground">{targetName}</span> : 'Target'}.
             </CardDescription>
           </div>
-          <Button variant="outline" size="sm" onClick={loadActivities} disabled={isLoading}>
-            {isLoading ? <IconLoader2 className="w-4 h-4 animate-spin mr-2" /> : null}
-            Refresh
-          </Button>
+          <div className="flex items-center gap-3">
+            <Select value={selectedYear} onValueChange={setSelectedYear}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Year" />
+              </SelectTrigger>
+              <SelectContent>
+                {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map((year) => (
+                  <SelectItem key={year} value={year.toString()}>
+                    {year}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={loadActivities} disabled={isLoading}>
+              {isLoading ? <IconLoader2 className="w-4 h-4 animate-spin mr-2" /> : null}
+              Refresh
+            </Button>
+          </div>
         </div>
       </CardHeader>
       <CardContent>
@@ -100,7 +136,7 @@ export function SourceActivities({ sourceToken, targetToken, sourceName, targetN
           </div>
         ) : activities.length === 0 ? (
           <div className="text-center py-8 text-muted-foreground border border-dashed rounded-lg">
-            No recent activities found in Source account.
+            No activities found in Source account for {selectedYear}.
           </div>
         ) : (
           <div className="space-y-3">
