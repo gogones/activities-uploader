@@ -109,6 +109,8 @@ export const exportActivityAsGpx = createServerFn({ method: 'POST' }).handler(
       if (!activityRes.ok) throw new Error('Failed to fetch activity details')
       const activity = await activityRes.json()
 
+    console.log(activity)
+
       // 2. Fetch Streams
       const streamsRes = await fetch(
         `https://www.strava.com/api/v3/activities/${activityId}/streams?keys=time,latlng,altitude&key_by_type=true`,
@@ -125,6 +127,13 @@ export const exportActivityAsGpx = createServerFn({ method: 'POST' }).handler(
       // Strava start_date is ISO8601 string
       const startTimeMs = new Date(activity.start_date).getTime()
       
+      const typeMapping: Record<string, string> = {
+        Ride: 'cycling',
+        Walk: 'walking',
+        Run: 'running',
+      }
+      const gpxActivityType = typeMapping[activity.type] || activity.sport_type || activity.type
+
       let gpx = `<?xml version="1.0" encoding="UTF-8"?>
 <gpx creator="Strava Shifter" version="1.1" xmlns="http://www.topografix.com/GPX/1/1" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xsi:schemaLocation="http://www.topografix.com/GPX/1/1 http://www.topografix.com/GPX/1/1/gpx.xsd">
   <metadata>
@@ -133,7 +142,7 @@ export const exportActivityAsGpx = createServerFn({ method: 'POST' }).handler(
   </metadata>
   <trk>
     <name>${activity.name}</name>
-    <type>${activity.type === 'Ride' ? '1' : activity.type === 'Run' ? '9' : '0'}</type>
+    <type>${gpxActivityType}</type>
     <trkseg>
 `
 
